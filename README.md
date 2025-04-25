@@ -1,20 +1,23 @@
-# Advanced OCR Processing System
+# 📚 Advanced OCR Project
 
-A sophisticated OCR solution combining multiple engines with quality analysis and reporting.
+This project is an advanced OCR processing tool designed for:
+- Extracting structured text from images and PDFs
+- Maintaining document formatting (e.g., tables, paragraph structure)
+- Supporting English, Arabic, and multi-language documents
+- Batch folder processing
+- High-accuracy results using multiple OCR engines (Tesseract, EasyOCR, PaddleOCR)
 
-## Features
+## ✨ Features
+- Batch OCR: Process entire folders.
+- Ensemble OCR Engine: Combines results from multiple OCR models.
+- Output in DOCX format preserving paragraph structure.
+- Supports Arabic (RTL) and English (LTR) documents.
+- Download all results as ZIP.
+- Future: Detailed report generation (Trados-style reports).
 
-- Multi-engine OCR processing (Tesseract, EasyOCR, PaddleOCR)
-- Confidence-based result merging
-- Quality analysis with color-coding
-- Format preservation
-- Multi-language support
-- Streamlit web interface
-- Comprehensive reporting (Excel, Word)
+## 🛠 Setup Instructions
 
-## Installation
-
+1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/Advanced-OCR-Project.git
+git clone https://github.com/your-repo/Advanced-OCR-Project.git
 cd Advanced-OCR-Project
-pip install -r requirements.txt
