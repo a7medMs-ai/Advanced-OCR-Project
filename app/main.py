@@ -1,6 +1,8 @@
 # app/main.py
 
 import os
+import shutil
+import zipfile
 import streamlit as st
 from app.processors.image_preprocessing import preprocess_image
 from app.ocr_engines.ensemble_ocr import ensemble_ocr
@@ -12,11 +14,6 @@ SUPPORTED_PDF_FORMATS = ['.pdf']
 def process_folder(input_folder, output_folder, language='en'):
     """
     Process all supported files in the input folder and generate DOCX files.
-
-    Args:
-        input_folder (str): Path to folder containing images or PDFs.
-        output_folder (str): Path to folder where outputs will be saved.
-        language (str): Language for OCR.
     """
     if not os.path.exists(input_folder):
         raise FileNotFoundError(f"Input folder not found: {input_folder}")
@@ -40,8 +37,17 @@ def process_folder(input_folder, output_folder, language='en'):
             create_docx_from_text(extracted_text, output_docx_path, language=language)
 
         elif ext.lower() in SUPPORTED_PDF_FORMATS:
-            st.write(f"PDF support will be added in next version: {filename}")
-            # Future work: Convert PDF to images then OCR
+            st.write(f"PDF support will be added soon: {filename}")
+
+def zip_folder(folder_path, zip_path):
+    """
+    Compress a folder into a ZIP file.
+
+    Args:
+        folder_path (str): Path to folder.
+        zip_path (str): Path to output ZIP file.
+    """
+    shutil.make_archive(zip_path.replace('.zip', ''), 'zip', folder_path)
 
 def main():
     st.title("Advanced OCR Batch Processing Tool")
@@ -57,6 +63,18 @@ def main():
             st.info(f"Processing all files from {input_folder}...")
             process_folder(input_folder, output_folder, language=language)
             st.success("Processing Completed! Check your output folder.")
+
+            # After processing, create a ZIP and provide download
+            zip_path = "output_results.zip"
+            zip_folder(output_folder, zip_path)
+
+            with open(zip_path, "rb") as f:
+                st.download_button(
+                    label="📦 Download All DOCX Files (ZIP)",
+                    data=f,
+                    file_name="output_results.zip",
+                    mime="application/zip"
+                )
         else:
             st.error("Please specify both input and output folders.")
 
