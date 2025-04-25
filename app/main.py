@@ -4,7 +4,7 @@ import os
 import shutil
 import zipfile
 import streamlit as st
-from app.processors.image_preprocessing import preprocess_image
+from processors.image_preprocessing import preprocess_image
 from app.ocr_engines.ensemble_ocr import ensemble_ocr
 from app.output.docx_writer import create_docx_from_text
 
