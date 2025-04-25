@@ -1,20 +1,12 @@
-# Advanced OCR Processing System
-
-A sophisticated OCR solution combining multiple engines with quality analysis and reporting.
-
-## Features
-
-- Multi-engine OCR processing (Tesseract, EasyOCR, PaddleOCR)
-- Confidence-based result merging
-- Quality analysis with color-coding
-- Format preservation
-- Multi-language support
-- Streamlit web interface
-- Comprehensive reporting (Excel, Word)
-
-## Installation
-
-```bash
-git clone https://github.com/yourusername/Advanced-OCR-Project.git
-cd Advanced-OCR-Project
-pip install -r requirements.txt
+streamlit==1.12.0
+pytesseract==0.3.10
+easyocr==1.6.2
+paddleocr==2.6.1.3
+pdf2image==1.16.3
+opencv-python==4.7.0.72
+pillow==9.5.0
+python-docx==0.8.11
+openpyxl==3.1.2
+pandas==1.5.3
+numpy==1.24.3
+python-multipart==0.0.6
