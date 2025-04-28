@@ -1,28 +1,38 @@
-# app/ocr_engines/easyocr_engine.py
-
 import easyocr
+import cv2
 
-# Create a cache for EasyOCR readers to avoid reloading models
-_easyocr_readers = {}
-
-def extract_text_easyocr(image_path, languages=['en']):
+def run_easyocr(image, languages=['en', 'ar']):
     """
-    Extract text from an image using EasyOCR.
-
-    Args:
-        image_path (str): Path to the input image.
-        languages (list): List of language codes. Example: ['en'], ['ar'], ['en', 'ar']
-
-    Returns:
-        str: Extracted text.
+    Runs EasyOCR on the given image and returns results.
+    Each result contains:
+    - text
+    - confidence score
+    - bounding box coordinates
     """
-    lang_str = [lang.lower() for lang in languages]
-    lang_key = '_'.join(lang_str)
+    # Initialize the EasyOCR reader
+    reader = easyocr.Reader(languages, gpu=False)
 
-    if lang_key not in _easyocr_readers:
-        _easyocr_readers[lang_key] = easyocr.Reader(lang_str, gpu=False)
+    # Ensure the input image is in the correct format
+    if isinstance(image, str):
+        image = cv2.imread(image)
+        if image is None:
+            raise ValueError(f"Could not load image at {image}")
 
-    reader = _easyocr_readers[lang_key]
-    result = reader.readtext(image_path, detail=0)  # Only text, not boxes
+    # Convert to RGB
+    rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-    return "\n".join(result)
+    # Run EasyOCR
+    detections = reader.readtext(rgb)
+
+    results = []
+    for detection in detections:
+        bbox, text, confidence = detection
+        if text.strip() != "":
+            result = {
+                'text': text,
+                'confidence': round(confidence * 100, 2),  # Convert to percentage
+                'box': bbox  # bounding box points
+            }
+            results.append(result)
+
+    return results
