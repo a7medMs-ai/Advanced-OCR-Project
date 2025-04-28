@@ -1,56 +1,72 @@
-# app/processors/image_preprocessing.py
-
 import cv2
 import numpy as np
-from PIL import Image
-import os
 
-def preprocess_image(image_path, output_path=None):
+def preprocess_image(image_path):
     """
-    Preprocess the image for better OCR results:
+    Preprocess the input image to enhance OCR accuracy.
+    Steps:
     - Convert to grayscale
-    - Apply adaptive thresholding
-    - Denoise
+    - Remove noise
+    - Apply thresholding
+    - Deskew the image
     - Sharpen edges
-
-    Args:
-        image_path (str): Path to input image.
-        output_path (str, optional): Path to save the preprocessed image. If None, does not save.
-
-    Returns:
-        PIL.Image: Preprocessed image.
     """
-    if not os.path.exists(image_path):
-        raise FileNotFoundError(f"Image not found: {image_path}")
+    # Read the image
+    image = cv2.imread(image_path)
 
-    img = cv2.imread(image_path)
+    if image is None:
+        raise ValueError(f"Could not read the image at path: {image_path}")
 
     # Convert to grayscale
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    # Apply bilateral filter to remove noise while keeping edges sharp
+    filtered = cv2.bilateralFilter(gray, 9, 75, 75)
 
     # Apply adaptive thresholding
     thresh = cv2.adaptiveThreshold(
-        gray, 255, 
-        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-        cv2.THRESH_BINARY, 
-        11, 2
+        filtered, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
+        cv2.THRESH_BINARY, 11, 2
     )
 
-    # Denoise
-    denoised = cv2.fastNlMeansDenoising(thresh, h=30)
+    # Deskew the image
+    deskewed = deskew(thresh)
 
-    # Sharpening
-    kernel = np.array([[0, -1, 0],
-                       [-1, 5,-1],
-                       [0, -1, 0]])
-    sharpened = cv2.filter2D(denoised, -1, kernel)
+    # Sharpen the image
+    sharpened = sharpen_image(deskewed)
 
-    # Convert back to PIL
-    preprocessed_pil = Image.fromarray(sharpened)
+    return sharpened
 
-    # Save if required
-    if output_path:
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        preprocessed_pil.save(output_path)
+def deskew(image):
+    """
+    Corrects skew in the image using image moments.
+    """
+    coords = np.column_stack(np.where(image > 0))
+    if coords.shape[0] == 0:
+        return image  # No text detected
 
-    return preprocessed_pil
+    angle = cv2.minAreaRect(coords)[-1]
+    if angle < -45:
+        angle = -(90 + angle)
+    else:
+        angle = -angle
+
+    (h, w) = image.shape
+    center = (w // 2, h // 2)
+    M = cv2.getRotationMatrix2D(center, angle, 1.0)
+    rotated = cv2.warpAffine(image, M, (w, h), flags=cv2.INTER_CUBIC, 
+                             borderMode=cv2.BORDER_REPLICATE)
+
+    return rotated
+
+def sharpen_image(image):
+    """
+    Sharpens the image to make text edges clearer.
+    """
+    kernel = np.array([
+        [0, -1, 0],
+        [-1, 5, -1],
+        [0, -1, 0]
+    ])
+    sharpened = cv2.filter2D(image, -1, kernel)
+    return sharpened
