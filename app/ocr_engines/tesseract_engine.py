@@ -1,29 +1,47 @@
-# app/ocr_engines/tesseract_engine.py
-
 import pytesseract
-from PIL import Image
+import cv2
 
-def extract_text_tesseract(image_path, languages=['en']):
+def run_tesseract_ocr(image, lang='eng+ara'):
     """
-    Extract text from an image using Tesseract OCR.
-
-    Args:
-        image_path (str): Path to the input image.
-        languages (list): List of language codes. Example: ['en'], ['ar'], ['en', 'ar']
-
-    Returns:
-        str: Extracted text.
+    Runs Tesseract OCR on the given image and returns results.
+    Each result contains:
+    - text
+    - confidence score
+    - bounding box coordinates
     """
-    try:
-        img = Image.open(image_path)
-    except Exception as e:
-        raise Exception(f"Error opening image: {e}")
+    # Ensure the input image is in the correct format
+    if isinstance(image, str):
+        image = cv2.imread(image)
+        if image is None:
+            raise ValueError(f"Could not load image at {image}")
 
-    lang_str = '+'.join(languages) if languages else 'eng'
+    # Convert to RGB
+    rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-    try:
-        text = pytesseract.image_to_string(img, lang=lang_str)
-    except Exception as e:
-        raise Exception(f"Tesseract OCR failed: {e}")
+    # Run Tesseract OCR
+    data = pytesseract.image_to_data(
+        rgb,
+        output_type=pytesseract.Output.DICT,
+        lang=lang,
+        config='--oem 3 --psm 6'
+    )
 
-    return text
+    results = []
+    for i in range(len(data['text'])):
+        text = data['text'][i]
+        conf = int(data['conf'][i])
+
+        if text.strip() != "":
+            result = {
+                'text': text,
+                'confidence': conf,
+                'box': (
+                    data['left'][i],
+                    data['top'][i],
+                    data['width'][i],
+                    data['height'][i]
+                )
+            }
+            results.append(result)
+
+    return results
