@@ -4,6 +4,7 @@ opencv-contrib-python-headless
 pytesseract
 easyocr
 paddleocr
+paddlepaddle
 pdf2image
 python-docx
 Pillow
