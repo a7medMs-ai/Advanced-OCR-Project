@@ -1,12 +1,10 @@
 streamlit
+opencv-python-headless
+opencv-contrib-python-headless
 pytesseract
 easyocr
 paddleocr
-layoutparser
-opencv-python
+pdf2image
 python-docx
 Pillow
 numpy
-torch
-PyMuPDF
-opencv-python-headless
