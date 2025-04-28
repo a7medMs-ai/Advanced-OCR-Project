@@ -1,82 +1,64 @@
-# app/main.py
-
-import os
-import shutil
-import zipfile
 import streamlit as st
+import os
+import tempfile
 from processors.image_preprocessing import preprocess_image
-from app.ocr_engines.ensemble_ocr import ensemble_ocr
-from app.output.docx_writer import create_docx_from_text
-
-SUPPORTED_IMAGE_FORMATS = ['.jpg', '.jpeg', '.png', '.bmp', '.tiff']
-SUPPORTED_PDF_FORMATS = ['.pdf']
-
-def process_folder(input_folder, output_folder, language='en'):
-    """
-    Process all supported files in the input folder and generate DOCX files.
-    """
-    if not os.path.exists(input_folder):
-        raise FileNotFoundError(f"Input folder not found: {input_folder}")
-
-    os.makedirs(output_folder, exist_ok=True)
-
-    files = os.listdir(input_folder)
-    for filename in files:
-        file_path = os.path.join(input_folder, filename)
-        name, ext = os.path.splitext(filename)
-
-        if ext.lower() in SUPPORTED_IMAGE_FORMATS:
-            st.write(f"Processing image: {filename}")
-            preprocessed_image = preprocess_image(file_path)
-            temp_path = f"temp/{name}_preprocessed.png"
-            os.makedirs("temp", exist_ok=True)
-            preprocessed_image.save(temp_path)
-
-            extracted_text = ensemble_ocr(temp_path, languages=[language])
-            output_docx_path = os.path.join(output_folder, f"{name}.docx")
-            create_docx_from_text(extracted_text, output_docx_path, language=language)
-
-        elif ext.lower() in SUPPORTED_PDF_FORMATS:
-            st.write(f"PDF support will be added soon: {filename}")
-
-def zip_folder(folder_path, zip_path):
-    """
-    Compress a folder into a ZIP file.
-
-    Args:
-        folder_path (str): Path to folder.
-        zip_path (str): Path to output ZIP file.
-    """
-    shutil.make_archive(zip_path.replace('.zip', ''), 'zip', folder_path)
+from processors.pdf_processor import pdf_to_images
+from ocr_engines.tesseract_engine import run_tesseract_ocr
+from ocr_engines.easyocr_engine import run_easyocr
+from ocr_engines.paddleocr_engine import run_paddleocr
+from utils.confidence_highlighter import create_highlighted_document
 
 def main():
-    st.title("Advanced OCR Batch Processing Tool")
+    st.title("Advanced OCR System with Confidence Highlighting")
 
-    st.sidebar.header("Upload Folder")
+    uploaded_file = st.file_uploader("Upload an image or PDF", type=['png', 'jpg', 'jpeg', 'pdf'])
 
-    input_folder = st.sidebar.text_input("Input Folder Path")
-    output_folder = st.sidebar.text_input("Output Folder Path")
-    language = st.sidebar.selectbox("Select Language", ['en', 'ar'])
+    if uploaded_file is not None:
+        file_extension = uploaded_file.name.split('.')[-1].lower()
 
-    if st.sidebar.button("Start OCR"):
-        if input_folder and output_folder:
-            st.info(f"Processing all files from {input_folder}...")
-            process_folder(input_folder, output_folder, language=language)
-            st.success("Processing Completed! Check your output folder.")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            input_path = os.path.join(temp_dir, uploaded_file.name)
 
-            # After processing, create a ZIP and provide download
-            zip_path = "output_results.zip"
-            zip_folder(output_folder, zip_path)
+            with open(input_path, 'wb') as f:
+                f.write(uploaded_file.read())
 
-            with open(zip_path, "rb") as f:
-                st.download_button(
-                    label="📦 Download All DOCX Files (ZIP)",
-                    data=f,
-                    file_name="output_results.zip",
-                    mime="application/zip"
-                )
-        else:
-            st.error("Please specify both input and output folders.")
+            images = []
+            if file_extension == 'pdf':
+                images = pdf_to_images(input_path, temp_dir)
+            else:
+                images = [input_path]
+
+            all_results = []
+
+            st.info("Processing files...")
+
+            for img_path in images:
+                preprocessed_img = preprocess_image(img_path)
+
+                tesseract_results = run_tesseract_ocr(preprocessed_img)
+                easyocr_results = run_easyocr(preprocessed_img)
+                paddleocr_results = run_paddleocr(preprocessed_img, languages='en')
+
+                combined_results = tesseract_results + easyocr_results + paddleocr_results
+
+                all_results.extend(combined_results)
+
+            st.success("OCR completed successfully.")
+
+            if all_results:
+                output_word_path = os.path.join(temp_dir, "output.docx")
+
+                rtl_mode = st.checkbox("RTL Mode (Arabic)", value=True)
+
+                create_highlighted_document(all_results, output_word_path, rtl=rtl_mode)
+
+                with open(output_word_path, "rb") as file:
+                    st.download_button(
+                        label="Download Result as Word Document",
+                        data=file,
+                        file_name="ocr_output.docx",
+                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    )
 
 if __name__ == "__main__":
     main()
