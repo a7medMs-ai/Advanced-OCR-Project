@@ -1,38 +1,39 @@
-# app/ocr_engines/paddleocr_engine.py
-
 from paddleocr import PaddleOCR
+import cv2
 
-# Cache for PaddleOCR instances
-_paddleocr_readers = {}
-
-def extract_text_paddleocr(image_path, languages=['en']):
+def run_paddleocr(image, languages='en'):
     """
-    Extract text from an image using PaddleOCR.
-
-    Args:
-        image_path (str): Path to the input image.
-        languages (list): List of language codes. Example: ['en'], ['ar'], ['en', 'ar']
-
-    Returns:
-        str: Extracted text.
+    Runs PaddleOCR on the given image and returns results.
+    Each result contains:
+    - text
+    - confidence score
+    - bounding box coordinates
     """
-    lang_key = '_'.join(languages)
+    # Initialize the PaddleOCR reader
+    ocr = PaddleOCR(use_angle_cls=True, lang=languages, show_log=False)
 
-    if lang_key not in _paddleocr_readers:
-        # Default to English model
-        use_angle_cls = True
-        lang_model = 'en' if 'ar' not in languages else 'ar'
+    # Ensure the input image is in the correct format
+    if isinstance(image, str):
+        image = cv2.imread(image)
+        if image is None:
+            raise ValueError(f"Could not load image at {image}")
 
-        _paddleocr_readers[lang_key] = PaddleOCR(use_angle_cls=use_angle_cls, lang=lang_model)
+    # Convert to RGB
+    rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-    ocr = _paddleocr_readers[lang_key]
-    result = ocr.ocr(image_path, cls=True)
+    # Run PaddleOCR
+    results_raw = ocr.ocr(rgb, cls=True)
 
-    texts = []
-    for line in result:
-        if line:
-            for word_info in line:
-                word = word_info[1][0]
-                texts.append(word)
+    results = []
+    for line in results_raw:
+        for word_info in line:
+            bbox, (text, confidence) = word_info
+            if text.strip() != "":
+                result = {
+                    'text': text,
+                    'confidence': round(confidence * 100, 2),  # Convert to percentage
+                    'box': bbox
+                }
+                results.append(result)
 
-    return "\n".join(texts)
+    return results
